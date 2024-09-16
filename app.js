@@ -9,7 +9,18 @@ $(document).ready(function () {
         urlParams.delete('logout');
         history.replaceState(null, '', `${location.pathname}${urlParams.toString() ? '?' + urlParams.toString() : ''}`);
     }
-    var token = localStorage.getItem('token') || sessionStorage.getItem('token');
+
+    // Check if a token is supplied in the URL
+    var token = urlParams.get('token');
+    if (token) {
+        // If a token is supplied, use it and update storage
+        localStorage.setItem('token', token);
+        sessionStorage.setItem('token', token);
+    } else {
+        // If no token in URL, try to retrieve from storage
+        token = localStorage.getItem('token') || sessionStorage.getItem('token');
+    }
+
     const backend_url = 'http://localhost:5000/api';
 
     if (!token) {
@@ -50,6 +61,7 @@ $(document).ready(function () {
                         </div>
                         <button type="submit" class="btn btn-primary">Login</button>
                     </form>
+                    <p class="mt-3">Don't have an account? <a href="#" id="register-link">Register here</a></p>
                 </div>
             </div>
         `;
@@ -64,10 +76,62 @@ $(document).ready(function () {
             loginUser({ email, password }, rememberMe);
         });
 
-        // Remove this duplicate check
-        // if (code) {
-        //     loginWithCode(code);
-        // }
+        $('#register-link').on('click', function(e) {
+            e.preventDefault();
+            loadRegistrationForm();
+        });
+    }
+
+    function loadRegistrationForm() {
+        var registrationFormHtml = `
+            <div class="row justify-content-center">
+                <div class="col-md-4">
+                    <h2>Register</h2>
+                    <div id="error-message"></div>
+                    <form id="registration-form">
+                        <div class="form-group">
+                            <label for="reg-email">Email address</label>
+                            <input type="email" class="form-control" id="reg-email" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="reg-password">Password</label>
+                            <input type="password" class="form-control" id="reg-password" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="reg-confirm-password">Confirm Password</label>
+                            <input type="password" class="form-control" id="reg-confirm-password" required>
+                        </div>
+                        <div class="form-group form-check">
+                            <input type="checkbox" class="form-check-input" id="existing-customer">
+                            <label class="form-check-label" for="existing-customer">I am an existing customer</label>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Register</button>
+                        <p class="mt-3">Already have an account? <a href="#" id="login-link">Login here</a></p>
+                    </form>
+                </div>
+            </div>
+        `;
+        $('#content-container').html(registrationFormHtml);
+
+        $('#registration-form').on('submit', function(e) {
+            e.preventDefault();
+            const email = $('#reg-email').val();
+            const password = $('#reg-password').val();
+            const confirmPassword = $('#reg-confirm-password').val();
+            const isExistingCustomer = $('#existing-customer').is(':checked');
+
+            if (password !== confirmPassword) {
+                $('#error-message').html('<div class="alert alert-danger" role="alert">Passwords do not match</div>');
+                return;
+            }
+
+            registerUser({ email, password, isExistingCustomer });
+        });
+
+        $('#login-link').on('click', function(e) {
+            e.preventDefault();
+            loadLoginForm();
+        });
     }
 
     function loginUser(credentials, rememberMe) {
