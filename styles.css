@@ -1,0 +1,15 @@
+/* styles.css */
+
+/* Custom styling for the login form */
+#login-form {
+    margin-top: 50px;
+}
+
+/* Center content vertically */
+html, body {
+    height: 100%;
+}
+
+.container {
+    padding-top: 20px;
+}
