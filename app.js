@@ -1,8 +1,14 @@
 $(document).ready(function () {
-    // Check for a token in localStorage or sessionStorage
-    localStorage.removeItem('token');
-    sessionStorage.removeItem('token');
-    
+    // Check for 'logout' parameter in the URL
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('logout') === 'true') {
+        // Clear the token from both localStorage and sessionStorage
+        localStorage.removeItem('token');
+        sessionStorage.removeItem('token');
+        // Remove the 'logout' parameter from the URL
+        urlParams.delete('logout');
+        history.replaceState(null, '', `${location.pathname}${urlParams.toString() ? '?' + urlParams.toString() : ''}`);
+    }
     var token = localStorage.getItem('token') || sessionStorage.getItem('token');
     const backend_url = 'http://localhost:5000/api';
 
@@ -58,22 +64,25 @@ $(document).ready(function () {
             loginUser({ email, password }, rememberMe);
         });
 
-        // Check for a code in the URL
-        const urlParams = new URLSearchParams(window.location.search);
-        const code = urlParams.get('code');
-        if (code) {
-            loginWithCode(code);
-        }
+        // Remove this duplicate check
+        // if (code) {
+        //     loginWithCode(code);
+        // }
     }
 
     function loginUser(credentials, rememberMe) {
-        $.post(backend_url + '/login', credentials)
-        .done(function (response) {
-            handleLoginResponse(response, rememberMe);
-        })
-        .fail(function (jqXHR) {
-            const msg = jqXHR.responseJSON.message || 'Login failed';
-            $('#error-message').html(`<div class="alert alert-danger" role="alert">${msg}</div>`);
+        $.ajax({
+            url: backend_url + '/login',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(credentials),
+            success: function(response) {
+                handleLoginResponse(response, rememberMe);
+            },
+            error: function(jqXHR) {
+                const msg = jqXHR.responseJSON.message || 'Login failed';
+                $('#error-message').html(`<div class="alert alert-danger" role="alert">${msg}</div>`);
+            }
         });
     }
 
@@ -108,7 +117,7 @@ $(document).ready(function () {
 
 
         $.ajax({
-            url: backend_url + '/customer',
+            url: backend_url + '/booking',
             type: 'GET',
             headers: {
                 'Authorization': 'Bearer ' + token  // Add the token to the Authorization header
@@ -116,10 +125,11 @@ $(document).ready(function () {
             data: { },  // This data will be sent as query parameters
             success: function (data) {
                 if (data.status === 'success') {
-                    var customer = data.customer;
+                    const customer = data.customer;
+                    const bookings = data.bookings;
                     $('#content-container').html(`
                         <h2>Welcome, ${customer.forename} ${customer.surname}</h2>
-                        <p>This is the bookings screen. Content will be dynamically loaded here.</p>
+                        <p>You have ${bookings.length} bookings.</p>
                     `);
                     bindMenuActions();
                 } else {
