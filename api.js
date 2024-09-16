@@ -28,3 +28,27 @@ export function fetchBookings() {
         data: {}
     });
 }
+
+export function fetchPets() {
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+    return $.ajax({
+        url: backend_url + '/pets',
+        type: 'GET',
+        headers: {
+            'Authorization': 'Bearer ' + token
+        },
+        data: {}
+    });
+}
+
+export function fetchProfile() {
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+    return $.ajax({
+        url: backend_url + '/profile',
+        type: 'GET',
+        headers: {
+            'Authorization': 'Bearer ' + token
+        },
+        data: {}
+    });
+}
