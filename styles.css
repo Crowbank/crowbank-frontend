@@ -2,7 +2,8 @@
 
 /* Custom styling for the login form */
 #login-form {
-    margin-top: 50px;
+    max-width: 400px;
+    margin: 0 auto;
 }
 
 /* Center content vertically */
@@ -12,4 +13,49 @@ html, body {
 
 .container {
     padding-top: 20px;
+}
+
+body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.navbar {
+    box-shadow: 0 2px 4px rgba(0,0,0,.1);
+}
+
+.navbar-brand {
+    font-weight: bold;
+}
+
+#content-container {
+    flex-grow: 1;
+    padding: 20px;
+}
+
+.nav-item {
+    margin-left: 10px;
+}
+
+.nav-link {
+    font-weight: 500;
+}
+
+.nav-link:hover {
+    color: #007bff;
+}
+
+/* Custom styling for the login form */
+#login-form {
+    max-width: 400px;
+    margin: 0 auto;
+}
+
+/* Center content vertically */
+.vertical-center {
+    min-height: 100%;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
 }

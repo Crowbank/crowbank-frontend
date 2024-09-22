@@ -42,3 +42,8 @@ export function setToken(token, rememberMe) {
         sessionStorage.setItem('token', token);
     }
 }
+
+export function removeToken() {
+    localStorage.removeItem('token');
+    sessionStorage.removeItem('token');
+}

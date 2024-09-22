@@ -1,11 +1,21 @@
-const backend_url = 'http://localhost:5000/api';
+import { backend_url } from '../config.js';
 
-export function loginUser(credentials, rememberMe) {
+export function loginUser(email, password, rememberMe) {
     return $.ajax({
-        url: backend_url + '/login',
+        url: `${backend_url}/login`,
         type: 'POST',
         contentType: 'application/json',
-        data: JSON.stringify(credentials)
+        data: JSON.stringify({ email, password, rememberMe })
+    }).then(response => {
+        if (response.token) {
+            // Store the token based on the rememberMe option
+            if (rememberMe) {
+                localStorage.setItem('token', response.token);
+            } else {
+                sessionStorage.setItem('token', response.token);
+            }
+        }
+        return response;
     });
 }
 
@@ -13,12 +23,12 @@ export function loginWithCode(code) {
     return $.post(backend_url + '/login_with_code', { code: code });
 }
 
-export function registerUser(email, password) {
+export function registerUser(email, password, existing_customer) {
     return $.ajax({
         url: backend_url + '/register',
         type: 'POST',
         contentType: 'application/json',
-        data: JSON.stringify({ email, password })
+        data: JSON.stringify({ email, password, existing_customer })
     });
 }
 
@@ -42,7 +52,7 @@ export function verifyEmail(token) {
 
 export function loginWithToken(token) {
     return $.ajax({
-        url: backend_url + '/validate_token',
+        url: `${backend_url}/validate_token`,
         type: 'POST',
         headers: {
             'Authorization': 'Bearer ' + token

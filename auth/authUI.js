@@ -1,9 +1,50 @@
 import { loginUser, loginWithCode, registerUser, requestPasswordReset, verifyEmail } from './authAPI.js';
 import { loadBookingsScreen } from '../booking/bookingUI.js';
+import { toggleMenu } from '../utils/uiUtils.js';
 
 export function loadLoginForm() {
-    // ... (keep existing code)
-    
+    // Create a simple login form
+    const loginFormHtml = `
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <h2>Login</h2>
+                <form id="login-form">
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email address</label>
+                        <input type="email" class="form-control" id="email" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Password</label>
+                        <input type="password" class="form-control" id="password" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Login</button>
+                </form>
+            </div>
+        </div>
+    `;
+
+    $('#content-container').html(loginFormHtml);
+
+    // Add event listener for form submission
+    $('#login-form').on('submit', function(e) {
+        e.preventDefault();
+        const email = $('#email').val();
+        const password = $('#password').val();
+        const rememberMe = $('#remember-me').is(':checked');
+        loginUser(email, password, rememberMe)
+            .then(response => {
+                if (response.status === 'success') {
+                    // Handle successful login
+                    handleLoginResponse(response, rememberMe);
+                } else {
+                    alert('Login failed: ' + response.message);
+                }
+            })
+            .catch(error => {
+                alert('Login failed: ' + error.message);
+            });
+    });
+
     // Add links for registration and forgotten password
     $('#content-container').append(`
         <div class="mt-3">
@@ -138,4 +179,20 @@ export function handleEmailVerification(token) {
             alert('Email verification failed: ' + error.message);
             loadLoginForm();
         });
+}
+
+export function handleLoginResponse(response, rememberMe) {
+    if (response.status === 'success') {
+        const token = response.token;
+        if (rememberMe) {
+            localStorage.setItem('token', token);
+        } else {
+            sessionStorage.setItem('token', token);
+        }
+        toggleMenu(true);
+        loadBookingsScreen();
+    } else {
+        const msg = response.message || 'Login failed';
+        $('#error-message').html(`<div class="alert alert-danger" role="alert">${msg}</div>`);
+    }
 }

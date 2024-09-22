@@ -24,5 +24,14 @@ export function bindMenuActions() {
         localStorage.removeItem('token');
         sessionStorage.removeItem('token');
         loadLoginForm();
+        toggleMenu(false);
     });
+}
+
+export function toggleMenu(show) {
+    if (show) {
+        $('nav').show();
+    } else {
+        $('nav').hide();
+    }
 }
