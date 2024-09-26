@@ -1,4 +1,5 @@
 import { fetchPets, uploadPetImage, fetchBreeds, fetchVets, updatePet } from './petAPI.js';
+import { showMessage } from '../utils/uiUtils.js';
 
 export function loadPetsScreen() {
     const cachedPets = sessionStorage.getItem('pets');
@@ -13,7 +14,7 @@ export function loadPetsScreen() {
             })
             .catch((error) => {
                 $('#content-container').html('<div class="alert alert-danger" role="alert">Failed to load pets. Please try again.</div>');
-                console.error('Error loading pets:', error);
+                showMessage('Failed to load pets. Please try again.', 'error');
             });
     }
 }
@@ -196,23 +197,16 @@ function handleSavePet(event) {
     const formData = new FormData(event.target);
     const updatedPet = Object.fromEntries(formData.entries());
     
-    // Convert checkbox value to boolean
     updatedPet.deceased = updatedPet.deceased === 'on';
 
     updatePet(updatedPet.no, updatedPet)
         .then(() => {
             refreshPets();
+            showMessage('Pet updated successfully!', 'info');
         })
         .catch(error => {
             console.error('Error updating pet:', error);
-            $('#content-container').prepend(`
-                <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                    Failed to update pet. Please try again.
-                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-            `);
+            showMessage('Failed to update pet. Please try again.', 'error');
         });
 }
 

@@ -1,20 +1,41 @@
 import { checkLogoutParam, getToken, setToken, removeToken } from './auth/authUtils.js';
-import { loadLoginForm, handleEmailVerification } from './auth/authUI.js';
+import { loadLoginForm, handleEmailVerification, loadResetPasswordForm } from './auth/authUI.js';
 import { loadBookingsScreen, refreshBookings } from './booking/bookingUI.js';
 import { bindMenuActions, toggleMenu } from './utils/uiUtils.js';
 import { loginWithToken } from './auth/authAPI.js';
 import { loadPetsScreen, refreshPets } from './pet/petUI.js';
 import { loadProfileScreen, refreshProfile } from './profile/profileUI.js';
+import { showMessage } from './utils/uiUtils.js';
 
 $(document).ready(function () {
     checkLogoutParam();
     const token = getToken();
 
-    // Check for email verification token
+    // Get the current path
+    const currentPath = window.location.pathname;
     const urlParams = new URLSearchParams(window.location.search);
-    const verificationToken = urlParams.get('verify');
-    if (verificationToken) {
-        handleEmailVerification(verificationToken);
+
+    // Check for email verification
+    if (currentPath === '/frontend/verify-email') {
+        const verificationToken = urlParams.get('token');
+        if (verificationToken) {
+            handleEmailVerification(verificationToken);
+            return;
+        }
+    }
+
+    // Check for password reset
+    if (currentPath === '/frontend/reset-password') {
+        const resetToken = urlParams.get('token');
+        if (resetToken) {
+            loadResetPasswordForm(resetToken);
+            return;
+        }
+    }
+
+    // Check for forgot password
+    if (currentPath === '/frontend/forgot-password') {
+        loadForgotPasswordForm();
         return;
     }
 
@@ -55,7 +76,7 @@ $(document).ready(function () {
                 refreshPets().catch(handleApiError),
                 refreshProfile().catch(handleApiError)
             ]).then(() => {
-                alert('Data refreshed successfully!');
+                showMessage('Data refreshed successfully!', 'info');
             }).catch(() => {
                 // Error already handled by handleApiError
             });
@@ -69,8 +90,7 @@ function handleCredentialError(message) {
     removeToken();
     toggleMenu(false);
     loadLoginForm();
-    // Display the error message to the user
-    alert(message || 'Session expired. Please log in again.');
+    showMessage(message || 'Session expired. Please log in again.', 'warning');
 }
 
 function handleApiError(error) {
@@ -80,22 +100,21 @@ function handleApiError(error) {
             handleCredentialError(data.message);
         } else {
             console.error('API Error:', error);
-            // Handle other types of errors as needed
+            showMessage('An error occurred. Please try again.', 'error');
         }
     } else {
         console.error('Network Error:', error);
-        // Handle network errors
+        showMessage('Network error. Please check your connection and try again.', 'error');
     }
 }
 
-// Update the existing functions to use the new error handling
 function refreshData() {
     Promise.all([
         refreshBookings().catch(handleApiError),
         refreshPets().catch(handleApiError),
         refreshProfile().catch(handleApiError)
     ]).then(() => {
-        alert('Data refreshed successfully!');
+        showMessage('Data refreshed successfully!', 'info');
     }).catch(() => {
         // Error already handled by handleApiError
     });

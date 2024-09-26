@@ -47,3 +47,12 @@ export function removeToken() {
     localStorage.removeItem('token');
     sessionStorage.removeItem('token');
 }
+
+import { loginWithGoogle } from './authAPI.js';
+import { loadBookingsScreen } from '../booking/bookingUI.js';
+import { showMessage } from '../utils/uiUtils.js';
+
+// Add this new function
+export function handleGoogleLogin(response) {
+    console.log(response.credential);
+}

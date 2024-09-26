@@ -1,4 +1,5 @@
 import { fetchProfile, updateProfile } from './profileAPI.js';
+import { showMessage } from '../utils/uiUtils.js';
 
 export function loadProfileScreen() {
     const cachedProfile = sessionStorage.getItem('profile');
@@ -13,7 +14,7 @@ export function loadProfileScreen() {
             })
             .catch((error) => {
                 $('#content-container').html('<div class="alert alert-danger" role="alert">Failed to load profile. Please try again.</div>');
-                console.error('Error loading profile:', error);
+                showMessage('Failed to load profile. Please try again.', 'error');
             });
     }
 }
@@ -119,7 +120,7 @@ function handleSubmit(event) {
     
     // Process emergency contacts
     updatedProfile.emergency = [];
-    for (let i = 0; i < 10; i++) { // Assuming max 10 emergency contacts
+    for (let i = 0; i < 2; i++) {
         if (formData.get(`emergency[${i}][name]`)) {
             updatedProfile.emergency.push({
                 name: formData.get(`emergency[${i}][name]`),
@@ -133,10 +134,11 @@ function handleSubmit(event) {
         .then(() => {
             sessionStorage.removeItem('profile');
             loadProfileScreen();
+            showMessage('Profile updated successfully!', 'info');
         })
         .catch((error) => {
             console.error('Error updating profile:', error);
-            alert('Failed to update profile. Please try again.');
+            showMessage('Failed to update profile. Please try again.', 'error');
         });
 }
 
