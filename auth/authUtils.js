@@ -1,3 +1,7 @@
+import { loginWithGoogle } from './authAPI.js';
+import { loadBookingsScreen } from '../booking/bookingUI.js';
+import { showMessage, toggleMenu } from '../utils/uiUtils.js';
+
 export function checkLogoutParam() {
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('logout') === 'true') {
@@ -28,10 +32,11 @@ export function handleLoginResponse(response, rememberMe) {
         } else {
             sessionStorage.setItem('token', token);
         }
+        toggleMenu(true);
         loadBookingsScreen();
     } else {
         const msg = response.message || 'Login failed';
-        $('#error-message').html(`<div class="alert alert-danger" role="alert">${msg}</div>`);
+        showMessage(msg, 'error');
     }
 }
 
@@ -48,11 +53,22 @@ export function removeToken() {
     sessionStorage.removeItem('token');
 }
 
-import { loginWithGoogle } from './authAPI.js';
-import { loadBookingsScreen } from '../booking/bookingUI.js';
-import { showMessage } from '../utils/uiUtils.js';
-
-// Add this new function
-export function handleGoogleLogin(response) {
-    console.log(response.credential);
+export function handleGoogleLogin(token, isRegistration = false) {
+    return loginWithGoogle(token)
+        .then(response => {
+            if (response.status === 'success') {
+                if (isRegistration) {
+                    showMessage('Registration with Google successful!', 'info');
+                }
+                handleLoginResponse(response, true); // Always remember Google logins
+                return { success: true };
+            } else {
+                return { success: false, error: response };
+            }
+        })
+        .catch(error => {
+            return { success: false, error: error.responseJSON || error };
+        });
 }
+
+// Remove the import of loadRegistrationForm from './authUI.js'

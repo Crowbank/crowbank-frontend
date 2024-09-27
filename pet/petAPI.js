@@ -1,9 +1,9 @@
-import { backend_url } from '../config.js';
+import { config } from '../config.js';
 
 export function fetchPets() {
     const token = localStorage.getItem('token') || sessionStorage.getItem('token');
     return $.ajax({
-        url: `${backend_url}/pet`,
+        url: `${config.backend_url}/pet`,
         type: 'GET',
         headers: {
             'Authorization': 'Bearer ' + token

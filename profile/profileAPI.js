@@ -1,10 +1,10 @@
-import { backend_url } from '../config.js';
+import { config } from '../config.js';
 import { getToken } from '../auth/authUtils.js';
 
 export async function fetchProfile() {
     const token = getToken();
     try {
-        const response = await fetch(`${backend_url}/profile`, {
+        const response = await fetch(`${config.backend_url}/profile`, {
             method: 'GET',
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -28,7 +28,7 @@ export async function fetchProfile() {
 export async function updateProfile(profileData) {
     const token = getToken();
     try {
-        const response = await fetch(`${backend_url}/profile`, {
+        const response = await fetch(`${config.backend_url}/profile`, {
             method: 'PUT',
             headers: {
                 'Authorization': `Bearer ${token}`,

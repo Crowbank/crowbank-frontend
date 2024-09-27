@@ -1,8 +1,6 @@
-import { loginUser, loginWithCode, registerUser, requestPasswordReset, verifyEmail, resetPassword, loginWithGoogle } from './authAPI.js';
-import { loadBookingsScreen } from '../booking/bookingUI.js';
-import { toggleMenu } from '../utils/uiUtils.js';
+import { loginUser, registerUser, requestPasswordReset, verifyEmail, resetPassword, getGoogleAuthId } from './authAPI.js';
 import { showMessage } from '../utils/uiUtils.js';
-import { handleGoogleLogin } from './authUtils.js';
+import { handleGoogleLogin, handleLoginResponse } from './authUtils.js';
 
 export function loadLoginForm() {
     // Create a simple login form
@@ -29,14 +27,26 @@ export function loadLoginForm() {
 
     $('#content-container').html(loginFormHtml);
 
-    google.accounts.id.initialize({
-        client_id: "108162317225-9ve71sbjurbplu0hmi9g6bvm508esoie.apps.googleusercontent.com",
-        callback: handleGoogleLogin
+    getGoogleAuthId().then(clientId => {
+        google.accounts.id.initialize({
+            client_id: clientId,
+            callback: (response) => {
+                handleGoogleLogin(response.credential, false)
+                    .then(result => {
+                        if (!result.success) {
+                            handleGoogleLoginError(result.error, false);
+                        }
+                    });
+            }
+        });
+        google.accounts.id.renderButton(
+            document.getElementById('signInDiv'), 
+            { theme: 'outline', size: 'large', text: 'signin_with' }
+        );
+    }).catch(error => {
+        console.error('Error fetching Google client ID:', error);
+        showMessage('Error setting up Google Sign-In', 'error');
     });
-    google.accounts.id.renderButton(
-        document.getElementById('signInDiv'), 
-        { theme: 'outline', size: 'large' }
-    );
     
     // Add event listener for form submission
     $('#login-form').on('submit', function(e) {
@@ -76,7 +86,7 @@ export function loadLoginForm() {
     });
 }
 
-export function loadRegistrationForm() {
+export function loadRegistrationForm(userData = {}) {
     const registrationFormHtml = `
         <div class="row justify-content-center">
             <div class="col-md-6">
@@ -84,7 +94,15 @@ export function loadRegistrationForm() {
                 <form id="registration-form">
                     <div class="mb-3">
                         <label for="email" class="form-label">Email address</label>
-                        <input type="email" class="form-control" id="email" required>
+                        <input type="email" class="form-control" id="email" value="${userData.email || ''}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="firstName" class="form-label">First Name</label>
+                        <input type="text" class="form-control" id="firstName" value="${userData.name ? userData.name.split(' ')[0] : ''}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="lastName" class="form-label">Last Name</label>
+                        <input type="text" class="form-control" id="lastName" value="${userData.name ? userData.name.split(' ').slice(1).join(' ') : ''}" required>
                     </div>
                     <div class="mb-3">
                         <label for="password" class="form-label">Password</label>
@@ -98,14 +116,11 @@ export function loadRegistrationForm() {
                         <input type="checkbox" class="form-check-input" id="existing-customer">
                         <label class="form-check-label" for="existing-customer">Existing Customer</label>
                     </div>
+                    <input type="hidden" id="googleId" value="${userData.google_id || ''}">
                     <p class="text-muted small">Check this box if you are already a Crowbank customer.</p>
                     <button type="submit" class="btn btn-primary">Register</button>
                 </form>
-                <div class="mt-3">
-                    <button id="google-register" class="btn btn-outline-primary">
-                        <i class="fab fa-google"></i> Register with Google
-                    </button>
-                </div>
+                <div class="mt-3" id="googleRegisterDiv"></div>
                 <p class="mt-3">Already have an account? <a href="#" id="login-link">Login here</a></p>
             </div>
         </div>
@@ -113,23 +128,52 @@ export function loadRegistrationForm() {
 
     $('#content-container').html(registrationFormHtml);
 
+    getGoogleAuthId().then(clientId => {
+        google.accounts.id.initialize({
+            client_id: clientId,
+            callback: (response) => {
+                handleGoogleLogin(response.credential, true)
+                    .then(result => {
+                        if (!result.success) {
+                            handleGoogleLoginError(result.error, true);
+                        }
+                    });
+            }
+        });
+        google.accounts.id.renderButton(
+            document.getElementById('googleRegisterDiv'), 
+            { theme: 'outline', size: 'large', text: 'signup_with' }
+        );
+    }).catch(error => {
+        console.error('Error fetching Google client ID:', error);
+        showMessage('Error setting up Google Sign-Up', 'error');
+    });
+
     $('#registration-form').on('submit', function(e) {
         e.preventDefault();
         const email = $('#email').val();
+        const firstName = $('#firstName').val();
+        const lastName = $('#lastName').val();
         const password = $('#password').val();
         const confirmPassword = $('#confirm-password').val();
         const existingCustomer = $('#existing-customer').is(':checked');
+        const googleId = $('#googleId').val();
 
         if (password !== confirmPassword) {
             showMessage('Passwords do not match', 'error');
             return;
         }
 
-        registerUser(email, password, existingCustomer)
+        registerUser(email, password, firstName, lastName, existingCustomer, googleId)
             .then(response => {
                 if (response.status === 'success') {
-                    showMessage('Registration successful. Please check your email to verify your account.', 'info');
-                    loadLoginForm();
+                    if (googleId) {
+                        showMessage('Registration successful. You can now log in.', 'info');
+                        handleLoginResponse(response, true); // Auto-login for Google users
+                    } else {
+                        showMessage('Registration successful. Please check your email to verify your account.', 'info');
+                        loadLoginForm();
+                    }
                 } else {
                     showMessage('Registration failed: ' + response.message, 'error');
                 }
@@ -142,12 +186,6 @@ export function loadRegistrationForm() {
     $('#login-link').on('click', function(e) {
         e.preventDefault();
         loadLoginForm();
-    });
-
-    // Add Google register button event listener
-    $('#google-register').on('click', function(e) {
-        e.preventDefault();
-        handleGoogleLogin(true);
     });
 }
 
@@ -210,22 +248,6 @@ export function handleEmailVerification(token) {
         });
 }
 
-export function handleLoginResponse(response, rememberMe) {
-    if (response.status === 'success') {
-        const token = response.token;
-        if (rememberMe) {
-            localStorage.setItem('token', token);
-        } else {
-            sessionStorage.setItem('token', token);
-        }
-        toggleMenu(true);
-        loadBookingsScreen();
-    } else {
-        const msg = response.message || 'Login failed';
-        $('#error-message').html(`<div class="alert alert-danger" role="alert">${msg}</div>`);
-    }
-}
-
 // Add this new function
 export function loadResetPasswordForm(token) {
     const resetPasswordFormHtml = `
@@ -274,4 +296,89 @@ export function loadResetPasswordForm(token) {
                 showMessage('Password reset failed: ' + error.message, 'error');
             });
     });
+}
+
+export function loadStreamlinedRegistrationForm(userData) {
+    const streamlinedRegistrationFormHtml = `
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <h2>Complete Registration</h2>
+                <p>We couldn't find an account associated with your Google email (${userData.email}). Please choose an option below:</p>
+                <form id="streamlined-registration-form">
+                    <input type="hidden" id="email" value="${userData.email}">
+                    <input type="hidden" id="firstName" value="${userData.name ? userData.name.split(' ')[0] : ''}">
+                    <input type="hidden" id="lastName" value="${userData.name ? userData.name.split(' ').slice(1).join(' ') : ''}">
+                    <input type="hidden" id="googleId" value="${userData.google_id}">
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="customerType" id="new-customer" value="new" checked>
+                            <label class="form-check-label" for="new-customer">
+                                I am a new customer
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="customerType" id="existing-customer" value="existing">
+                            <label class="form-check-label" for="existing-customer">
+                                I am an existing Crowbank customer
+                            </label>
+                        </div>
+                    </div>
+                    <div id="existing-customer-email" style="display: none;">
+                        <div class="mb-3">
+                            <label for="previous-email" class="form-label">Previous Email Address</label>
+                            <input type="email" class="form-control" id="previous-email">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Complete Registration</button>
+                </form>
+            </div>
+        </div>
+    `;
+
+    $('#content-container').html(streamlinedRegistrationFormHtml);
+
+    $('input[name="customerType"]').on('change', function() {
+        $('#existing-customer-email').toggle($(this).val() === 'existing');
+    });
+
+    $('#streamlined-registration-form').on('submit', function(e) {
+        e.preventDefault();
+        const email = $('#email').val();
+        const firstName = $('#firstName').val();
+        const lastName = $('#lastName').val();
+        const googleId = $('#googleId').val();
+        const existingCustomer = $('input[name="customerType"]:checked').val() === 'existing';
+        const previousEmail = existingCustomer ? $('#previous-email').val() : '';
+
+        registerUser(email, null, firstName, lastName, existingCustomer, googleId, previousEmail)
+            .then(response => {
+                if (response.status === 'success') {
+                    showMessage('Registration successful. You are now logged in.', 'info');
+                    handleLoginResponse(response, true); // Auto-login for Google users
+                } else {
+                    showMessage('Registration failed: ' + response.message, 'error');
+                }
+            })
+            .catch(error => {
+                showMessage('Registration failed: ' + error.message, 'error');
+            });
+    });
+}
+
+function handleGoogleLoginError(error, isRegistration) {
+    if (error.error_code === 'USER_NOT_REGISTERED') {
+        showMessage('You need to complete your registration. Redirecting...', 'info');
+        setTimeout(() => {
+            loadStreamlinedRegistrationForm({
+                email: error.email,
+                name: error.name,
+                google_id: error.google_id
+            });
+        }, 2000);
+    } else {
+        showMessage(
+            `${isRegistration ? 'Registration' : 'Login'} with Google failed: ${error.message}`,
+            'error'
+        );
+    }
 }

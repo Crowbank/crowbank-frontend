@@ -55,7 +55,8 @@ export function showMessage(message, type = 'info') {
     const banner = `
         <div id="message-banner" class="alert alert-dismissible fade show" role="alert" 
              style="position: fixed; top: 0; left: 0; right: 0; z-index: 1050; margin-bottom: 0; 
-                    background-color: ${backgroundColor[type]}; color: ${textColor[type]};">
+                    background-color: ${backgroundColor[type]}; color: ${textColor[type]};
+                    box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
             ${message}
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
@@ -63,8 +64,11 @@ export function showMessage(message, type = 'info') {
 
     $('body').prepend(banner);
 
-    // Auto-hide the banner after 5 seconds
-    setTimeout(() => {
-        $('#message-banner').alert('close');
-    }, 5000);
+    // Adjust body padding to prevent content from being hidden behind the banner
+    $('body').css('padding-top', $('#message-banner').outerHeight());
+
+    // Remove padding when the banner is closed
+    $('.btn-close').on('click', function() {
+        $('body').css('padding-top', 0);
+    });
 }

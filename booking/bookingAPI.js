@@ -1,9 +1,9 @@
-import { backend_url } from '../config.js';
+import { config } from '../config.js';
 
 export function fetchBookings() {
     const token = localStorage.getItem('token') || sessionStorage.getItem('token');
     return $.ajax({
-        url: `${backend_url}/booking`,
+        url: `${config.backend_url}/booking`,
         type: 'GET',
         headers: {
             'Authorization': 'Bearer ' + token
