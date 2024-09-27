@@ -86,23 +86,55 @@ export function loadLoginForm() {
     });
 }
 
-export function loadRegistrationForm(userData = {}) {
-    const registrationFormHtml = `
+export function loadRegistrationForm() {
+    const registrationChoiceHtml = `
+        <div class="row justify-content-center">
+            <div class="col-md-8 text-center">
+                <h2 class="mb-4">Register</h2>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <button id="email-register-btn" class="btn btn-primary btn-lg w-100">
+                            <i class="fas fa-envelope me-2"></i>Register with Email
+                        </button>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <button id="google-register-btn" class="btn btn-outline-primary btn-lg w-100">
+                            <i class="fab fa-google me-2"></i>Register with Google
+                        </button>
+                    </div>
+                </div>
+                <p class="mt-3">Already have an account? <a href="#" id="login-link">Login here</a></p>
+            </div>
+        </div>
+    `;
+
+    $('#content-container').html(registrationChoiceHtml);
+
+    $('#email-register-btn').on('click', loadEmailRegistrationForm);
+    $('#google-register-btn').on('click', loadGoogleRegistrationForm);
+    $('#login-link').on('click', function(e) {
+        e.preventDefault();
+        loadLoginForm();
+    });
+}
+
+function loadEmailRegistrationForm() {
+    const emailRegistrationFormHtml = `
         <div class="row justify-content-center">
             <div class="col-md-6">
-                <h2>Register</h2>
-                <form id="registration-form">
+                <h2>Register with Email</h2>
+                <form id="email-registration-form">
                     <div class="mb-3">
                         <label for="email" class="form-label">Email address</label>
-                        <input type="email" class="form-control" id="email" value="${userData.email || ''}" required>
+                        <input type="email" class="form-control" id="email" required>
                     </div>
                     <div class="mb-3">
                         <label for="firstName" class="form-label">First Name</label>
-                        <input type="text" class="form-control" id="firstName" value="${userData.name ? userData.name.split(' ')[0] : ''}" required>
+                        <input type="text" class="form-control" id="firstName" required>
                     </div>
                     <div class="mb-3">
                         <label for="lastName" class="form-label">Last Name</label>
-                        <input type="text" class="form-control" id="lastName" value="${userData.name ? userData.name.split(' ').slice(1).join(' ') : ''}" required>
+                        <input type="text" class="form-control" id="lastName" required>
                     </div>
                     <div class="mb-3">
                         <label for="password" class="form-label">Password</label>
@@ -112,33 +144,62 @@ export function loadRegistrationForm(userData = {}) {
                         <label for="confirm-password" class="form-label">Confirm Password</label>
                         <input type="password" class="form-control" id="confirm-password" required>
                     </div>
-                    <div class="mb-3 form-check">
-                        <input type="checkbox" class="form-check-input" id="existing-customer">
-                        <label class="form-check-label" for="existing-customer">Existing Customer</label>
+                    <div class="mb-3">
+                        <label class="form-label">Customer Type</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="customerType" id="new-customer" value="new" checked>
+                            <label class="form-check-label" for="new-customer">New Customer</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="customerType" id="existing-customer" value="existing">
+                            <label class="form-check-label" for="existing-customer">Existing Crowbank Customer</label>
+                        </div>
                     </div>
-                    <input type="hidden" id="googleId" value="${userData.google_id || ''}">
-                    <p class="text-muted small">Check this box if you are already a Crowbank customer.</p>
                     <button type="submit" class="btn btn-primary">Register</button>
                 </form>
-                <div class="mt-3" id="googleRegisterDiv"></div>
-                <p class="mt-3">Already have an account? <a href="#" id="login-link">Login here</a></p>
+                <p class="mt-3"><a href="#" id="back-to-choice">Back to registration options</a></p>
             </div>
         </div>
     `;
 
-    $('#content-container').html(registrationFormHtml);
+    $('#content-container').html(emailRegistrationFormHtml);
+
+    $('#email-registration-form').on('submit', handleEmailRegistration);
+    $('#back-to-choice').on('click', function(e) {
+        e.preventDefault();
+        loadRegistrationForm();
+    });
+}
+
+function loadGoogleRegistrationForm() {
+    const googleRegistrationFormHtml = `
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <h2>Register with Google</h2>
+                <p>Please select your customer type before signing up with Google.</p>
+                <div class="mb-3">
+                    <label class="form-label">Customer Type</label>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="googleCustomerType" id="new-customer-google" value="new" checked>
+                        <label class="form-check-label" for="new-customer-google">New Customer</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="googleCustomerType" id="existing-customer-google" value="existing">
+                        <label class="form-check-label" for="existing-customer-google">Existing Crowbank Customer</label>
+                    </div>
+                </div>
+                <div id="googleRegisterDiv" class="mb-3"></div>
+                <p class="mt-3"><a href="#" id="back-to-choice">Back to registration options</a></p>
+            </div>
+        </div>
+    `;
+
+    $('#content-container').html(googleRegistrationFormHtml);
 
     getGoogleAuthId().then(clientId => {
         google.accounts.id.initialize({
             client_id: clientId,
-            callback: (response) => {
-                handleGoogleLogin(response.credential, true)
-                    .then(result => {
-                        if (!result.success) {
-                            handleGoogleLoginError(result.error, true);
-                        }
-                    });
-            }
+            callback: handleGoogleSignIn
         });
         google.accounts.id.renderButton(
             document.getElementById('googleRegisterDiv'), 
@@ -149,44 +210,48 @@ export function loadRegistrationForm(userData = {}) {
         showMessage('Error setting up Google Sign-Up', 'error');
     });
 
-    $('#registration-form').on('submit', function(e) {
+    $('#back-to-choice').on('click', function(e) {
         e.preventDefault();
-        const email = $('#email').val();
-        const firstName = $('#firstName').val();
-        const lastName = $('#lastName').val();
-        const password = $('#password').val();
-        const confirmPassword = $('#confirm-password').val();
-        const existingCustomer = $('#existing-customer').is(':checked');
-        const googleId = $('#googleId').val();
-
-        if (password !== confirmPassword) {
-            showMessage('Passwords do not match', 'error');
-            return;
-        }
-
-        registerUser(email, password, firstName, lastName, existingCustomer, googleId)
-            .then(response => {
-                if (response.status === 'success') {
-                    if (googleId) {
-                        showMessage('Registration successful. You can now log in.', 'info');
-                        handleLoginResponse(response, true); // Auto-login for Google users
-                    } else {
-                        showMessage('Registration successful. Please check your email to verify your account.', 'info');
-                        loadLoginForm();
-                    }
-                } else {
-                    showMessage('Registration failed: ' + response.message, 'error');
-                }
-            })
-            .catch(error => {
-                showMessage('Registration failed: ' + error.message, 'error');
-            });
+        loadRegistrationForm();
     });
+}
 
-    $('#login-link').on('click', function(e) {
-        e.preventDefault();
-        loadLoginForm();
-    });
+function handleEmailRegistration(e) {
+    e.preventDefault();
+    const email = $('#email').val();
+    const firstName = $('#firstName').val();
+    const lastName = $('#lastName').val();
+    const password = $('#password').val();
+    const confirmPassword = $('#confirm-password').val();
+    const existingCustomer = $('input[name="customerType"]:checked').val() === 'existing';
+
+    if (password !== confirmPassword) {
+        showMessage('Passwords do not match', 'error');
+        return;
+    }
+
+    registerUser(email, password, firstName, lastName, existingCustomer)
+        .then(response => {
+            if (response.status === 'success') {
+                showMessage('Registration successful. Please check your email to verify your account.', 'info');
+                loadLoginForm();
+            } else {
+                showMessage('Registration failed: ' + response.message, 'error');
+            }
+        })
+        .catch(error => {
+            showMessage('Registration failed: ' + error.message, 'error');
+        });
+}
+
+function handleGoogleSignIn(response) {
+    const existingCustomer = $('input[name="googleCustomerType"]:checked').val() === 'existing';
+    handleGoogleLogin(response.credential, existingCustomer)
+        .then(result => {
+            if (!result.success) {
+                handleGoogleLoginError(result.error, true);
+            }
+        });
 }
 
 export function loadForgotPasswordForm() {
@@ -286,7 +351,7 @@ export function loadResetPasswordForm(token) {
         resetPassword(token, newPassword)
             .then(response => {
                 if (response.status === 'success') {
-                    showMessage('Password reset successfully. You can now log in with your new password.', 'info');
+                    showMessage('Password reset successful. You can now log in with your new password.', 'info');
                     loadLoginForm();
                 } else {
                     showMessage('Password reset failed: ' + response.message, 'error');
