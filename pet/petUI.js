@@ -1,22 +1,23 @@
-import { fetchPets, uploadPetImage, fetchBreeds, fetchVets, updatePet } from './petAPI.js';
+import { addPet, getPetData, getPets, getBreeds, getVets, uploadPetImage, updatePet, fetchPet, refreshPetData } from './petAPI.js';
 import { showMessage } from '../utils/uiUtils.js';
 
 export function loadPetsScreen() {
-    const cachedPets = sessionStorage.getItem('pets');
+    // Add the "New Pet" button
+    $('#content-container').html(`
+        <button id="new-pet-btn" class="btn btn-success mb-3">Add New Pet</button>
+        <div id="pets-list-container"></div>
+    `);
+
+    $('#new-pet-btn').on('click', () => openPetEditForm());
     
-    if (cachedPets) {
-        renderPets(JSON.parse(cachedPets));
-    } else {
-        fetchPets()
-            .then((pets) => {
-                sessionStorage.setItem('pets', JSON.stringify(pets));
-                renderPets(pets);
-            })
-            .catch((error) => {
-                $('#content-container').html('<div class="alert alert-danger" role="alert">Failed to load pets. Please try again.</div>');
-                showMessage('Failed to load pets. Please try again.', 'error');
-            });
-    }
+    getPetData()
+        .then(data => {
+            renderPets(data.pets);
+        })
+        .catch((error) => {
+            $('#pets-list-container').html('<div class="alert alert-danger" role="alert">Failed to load data. Please try again.</div>');
+            showMessage('Failed to load data. Please try again.', 'error');
+        });
 }
 
 function renderPets(pets) {
@@ -56,7 +57,7 @@ function renderPets(pets) {
         $('.pet-list').html(renderPetList(filteredPets));
     };
 
-    $('#content-container').html(`
+    $('#pets-list-container').html(`
         <div class="mb-3">
             <input type="checkbox" id="show-all-pets">
             <label for="show-all-pets">Show all pets (including deceased)</label>
@@ -72,28 +73,48 @@ function renderPets(pets) {
     $('.pet-image').on('click', handleImageClick);
     
     // Add click event listener to edit buttons
-    $('.edit-pet').on('click', handleEditPet);
+    $('.edit-pet').on('click', function() {
+        const petId = $(this).data('pet-id');
+        openPetEditForm(petId);
+    });
 }
 
 function handleImageClick(event) {
-    const petId = $(event.target).closest('[data-pet-id]').data('pet-id');
     const fileInput = $('<input type="file" accept="image/*" style="display: none;">');
-    
-    fileInput.on('change', (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            uploadPetImage(petId, file)
-                .then(() => refreshPets())
-                .catch(error => console.error('Error uploading image:', error));
-        }
-    });
-
+    fileInput.on('change', handleImageUpload);
     fileInput.click();
 }
 
+function handleImageUpload(event) {
+    const file = event.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            $('#pet-image').attr('src', e.target.result);
+        }
+        reader.readAsDataURL(file);
+
+        const petId = $('#pet-id').val();
+        if (petId) {
+            uploadPetImage(petId, file)
+                .then(response => {
+                    showMessage('Image uploaded successfully!', 'info');
+                })
+                .catch(error => {
+                    console.error('Error uploading image:', error);
+                    showMessage('Failed to upload image. Please try again.', 'error');
+                });
+        }
+    }
+}
+
 export function refreshPets() {
-    sessionStorage.removeItem('pets');
-    loadPetsScreen();
+    refreshPetData().then(() => {
+        loadPetsScreen();
+    }).catch(error => {
+        console.error('Error refreshing pet data:', error);
+        showMessage('Failed to refresh pet data. Please try again.', 'error');
+    });
 }
 
 function handleEditPet(event) {
@@ -192,24 +213,6 @@ function renderVetOptions(vets, selectedVetNo = null) {
     ).join('');
 }
 
-function handleSavePet(event) {
-    event.preventDefault();
-    const formData = new FormData(event.target);
-    const updatedPet = Object.fromEntries(formData.entries());
-    
-    updatedPet.deceased = updatedPet.deceased === 'on';
-
-    updatePet(updatedPet.no, updatedPet)
-        .then(() => {
-            refreshPets();
-            showMessage('Pet updated successfully!', 'info');
-        })
-        .catch(error => {
-            console.error('Error updating pet:', error);
-            showMessage('Failed to update pet. Please try again.', 'error');
-        });
-}
-
 function calculateAge(dob) {
     const birthDate = new Date(dob);
     const today = new Date();
@@ -222,4 +225,235 @@ function calculateAge(dob) {
     }
 
     return `${years}y ${months}m`;
+}
+
+// Update the openPetEditForm function
+function openPetEditForm(petId = null) {
+    const formTitle = petId ? 'Edit Pet' : 'Add New Pet';
+    const formHtml = `
+        <div class="container my-5">
+            <div class="row">
+                <div class="col-md-10 offset-md-1">
+                    <form id="pet-edit-form">
+                        <div class="card shadow-sm mb-4">
+                            <div class="card-header bg-primary text-white">
+                                <h2 class="mb-0"><i class="fas fa-paw"></i>&nbsp; ${formTitle}</h2>
+                            </div>
+                            <div class="card-body bg-light">
+                                <input type="hidden" id="pet-id" name="no" value="${petId || ''}">
+                                <div class="row mb-4">
+                                    <div class="col-md-4">
+                                        <img id="pet-image" src="" alt="Pet Image" class="img-fluid mb-2 clickable-image" style="cursor: pointer; max-width: 100%; height: auto;">
+                                        <p class="text-muted small"><i class="fas fa-camera"></i> Click the image to upload a new photo</p>
+                                    </div>
+                                    <div class="col-md-8">
+                                        <div class="row">
+                                            <div class="col-md-6 mb-3">
+                                                <label for="pet-name" class="form-label"><i class="fas fa-font"></i> Name:</label>
+                                                <input type="text" id="pet-name" name="name" class="form-control" required>
+                                            </div>
+                                            <div class="col-md-6 mb-3">
+                                                <label class="form-label"><i class="fas fa-venus-mars"></i> Sex:</label>
+                                                <div class="d-flex">
+                                                    <div class="form-check me-3">
+                                                        <input class="form-check-input" type="radio" name="sex" id="sex-male" value="M" required>
+                                                        <label class="form-check-label" for="sex-male">Male</label>
+                                                    </div>
+                                                    <div class="form-check">
+                                                        <input class="form-check-input" type="radio" name="sex" id="sex-female" value="F" required>
+                                                        <label class="form-check-label" for="sex-female">Female</label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-6 mb-3">
+                                                <label for="pet-dob" class="form-label"><i class="fas fa-birthday-cake"></i> Date of Birth:</label>
+                                                <input type="date" id="pet-dob" name="dob" class="form-control" required>
+                                            </div>
+                                            <div class="col-md-6 mb-3">
+                                                <label class="form-label"><i class="fas fa-paw"></i> Species:</label>
+                                                <div class="d-flex">
+                                                    <div class="form-check me-3">
+                                                        <input class="form-check-input" type="radio" name="species" id="species-dog" value="Dog" required>
+                                                        <label class="form-check-label" for="species-dog">Dog</label>
+                                                    </div>
+                                                    <div class="form-check">
+                                                        <input class="form-check-input" type="radio" name="species" id="species-cat" value="Cat" required>
+                                                        <label class="form-check-label" for="species-cat">Cat</label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-6 mb-3">
+                                                <label for="pet-breed" class="form-label"><i class="fas fa-dog"></i> Breed:</label>
+                                                <select id="pet-breed" name="breed_no" class="form-select" required>
+                                                    <!-- Breed options will be populated dynamically -->
+                                                </select>
+                                            </div>
+                                            <div class="col-md-6 mb-3">
+                                                <label for="pet-vet" class="form-label"><i class="fas fa-user-md"></i> Vet:</label>
+                                                <select id="pet-vet" name="vet_no" class="form-select">
+                                                    <!-- Vet options will be populated dynamically -->
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-6 mb-3">
+                                                <label for="pet-microchip" class="form-label"><i class="fas fa-microchip"></i> Microchip:</label>
+                                                <input type="text" id="pet-microchip" name="microchip" class="form-control">
+                                            </div>
+                                            <div class="col-md-6 mb-3">
+                                                <div class="form-check mt-4">
+                                                    <input type="checkbox" id="pet-neutered" name="neutered" class="form-check-input">
+                                                    <label class="form-check-label" for="pet-neutered"><i class="fas fa-cut"></i> Neutered</label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-6 mb-3">
+                                                <div class="form-check">
+                                                    <input type="checkbox" id="pet-deceased" name="deceased" class="form-check-input">
+                                                    <label class="form-check-label" for="pet-deceased"><i class="fas fa-heart-broken"></i> Deceased</label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="text-center mt-4">
+                            <button type="submit" class="btn btn-primary btn-lg mr-2">Save</button>
+                            <button type="button" class="btn btn-secondary btn-lg" id="cancel-pet-edit">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    `;
+
+    $('#content-container').html(formHtml);
+
+    if (petId) {
+        fetchPet(petId).then(pet => {
+            populateBreeds(pet.species);
+            populateVets();
+            fetchPetDetails(pet);
+        });
+    } else {
+        populateBreeds('Dog'); // Default to Dog
+        populateVets();
+    }
+
+    // Add event listeners
+    $('#pet-edit-form').on('submit', handleSavePet);
+    $('#cancel-pet-edit').on('click', loadPetsScreen);
+    $('#pet-image').on('click', handleImageClick);
+    $('input[name="species"]').on('change', function() {
+        populateBreeds($(this).val());
+    });
+}
+
+function populateBreeds(species) {
+    const breeds = getBreeds();
+    const filteredBreeds = breeds.filter(breed => breed.species === species);
+    const options = filteredBreeds.map(breed => 
+        `<option value="${breed.no}">${breed.desc}</option>`
+    ).join('');
+    $('#pet-breed').html('<option value="">Select breed</option>' + options);
+}
+
+function populateVets() {
+    const vets = getVets();
+    const options = vets.map(vet => 
+        `<option value="${vet.no}">${vet.practice_name}</option>`
+    ).join('');
+    $('#pet-vet').html('<option value="">Select vet</option>' + options);
+}
+
+function fetchPetDetails(pet) {
+    $('#pet-name').val(pet.name);
+    $(`input[name="sex"][value="${pet.sex}"]`).prop('checked', true);
+    $('#pet-dob').val(new Date(pet.dob).toISOString().slice(0, 10));
+    $(`input[name="species"][value="${pet.species}"]`).prop('checked', true);
+    $('#pet-breed').val(pet.breed.no);
+    $('#pet-vet').val(pet.vet ? pet.vet.no : '');
+    $('#pet-microchip').val(pet.microchip);
+    $('#pet-deceased').prop('checked', pet.deceased);
+    $('#pet-neutered').prop('checked', pet.neutered);
+    $('#pet-image').attr('src', pet.image_url || (pet.species === 'Cat' ? 'images/cat.webp' : 'images/dog.webp'));
+}
+
+function handleSavePet(event) {
+    event.preventDefault();
+    const formData = new FormData(event.target);
+    const petData = Object.fromEntries(formData.entries());
+    
+    petData.deceased = petData.deceased === 'on';
+    petData.neutered = petData.neutered === 'on';
+
+    const petId = petData.no;
+    delete petData.no;
+
+    if (petId) {
+        updatePet(petId, petData)
+            .then(() => {
+                refreshPets();
+                showMessage('Pet updated successfully!', 'info');
+            })
+            .catch(error => {
+                console.error('Error updating pet:', error);
+                showMessage('Failed to update pet. Please try again.', 'error');
+            });
+    } else {
+        addPet(petData)
+            .then(() => {
+                refreshPets();
+                showMessage('Pet added successfully!', 'info');
+            })
+            .catch(error => {
+                console.error('Error adding pet:', error);
+                showMessage('Failed to add pet. Please try again.', 'error');
+            });
+    }
+}
+
+// Update the renderPets function to include the edit button
+function renderPets2(pets) {
+    // ... (existing code)
+
+    const renderPetList = (petsToRender) => {
+        return petsToRender.map(pet => `
+            <div class="col-md-4 mb-4" data-pet-id="${pet.no}">
+                <div class="card">
+                    <div class="row no-gutters p-2">
+                        <div class="col-4">
+                            <img src="${pet.image_url || (pet.species === 'Cat' ? 'images/cat.webp' : 'images/dog.webp')}" 
+                                 class="card-img pet-image" 
+                                 alt="${pet.name}">
+                        </div>
+                        <div class="col-8">
+                            <div class="card-body">
+                                <h5 class="card-title">${pet.name}</h5>
+                                <p class="card-text">Age: ${calculateAge(pet.dob)}</p>
+                                <p class="card-text">Breed: ${pet.breed ? pet.breed.desc : pet.species}</p>
+                                <p class="card-text">Vet: ${pet.vet ? pet.vet.practice_name : 'Not assigned'}</p>
+                                ${pet.deceased ? '<p class="card-text text-danger">Deceased</p>' : ''}
+                                <button class="btn btn-primary btn-sm edit-pet" data-pet-id="${pet.no}">Edit</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    };
+
+    // ... (existing code)
+
+    // Add click event listener to edit buttons
+    $('.edit-pet').on('click', function() {
+        const petId = $(this).data('pet-id');
+        openPetEditForm(petId);
+    });
 }

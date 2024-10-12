@@ -1,4 +1,4 @@
 export const config = {
-    backend_url: 'https://localhost:5000/api',
-    // Remove the google_auth_id from here
+    backend_url: `${window.location.protocol}//localhost:5000/api`,
+    // backend_url now matches the protocol of the current page
 };

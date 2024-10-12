@@ -1,6 +1,6 @@
 import { loginUser, registerUser, requestPasswordReset, verifyEmail, resetPassword, getGoogleAuthId } from './authAPI.js';
 import { showMessage } from '../utils/uiUtils.js';
-import { handleGoogleLogin, handleLoginResponse } from './authUtils.js';
+import { handleGoogleLogin, handleSuccessfulLogin, setToken } from './authUtils.js';
 
 export function loadLoginForm() {
     // Create a simple login form
@@ -57,7 +57,8 @@ export function loadLoginForm() {
         loginUser(email, password, rememberMe)
             .then(response => {
                 if (response.status === 'success') {
-                    handleLoginResponse(response, rememberMe);
+                    setToken(response.token, rememberMe);
+                    handleSuccessfulLogin(response.token);
                 } else {
                     showMessage('Login failed: ' + response.message, 'error');
                 }
@@ -248,7 +249,9 @@ function handleGoogleSignIn(response) {
     const existingCustomer = $('input[name="googleCustomerType"]:checked').val() === 'existing';
     handleGoogleLogin(response.credential, existingCustomer)
         .then(result => {
-            if (!result.success) {
+            if (result.success) {
+                handleSuccessfulLogin(result.token);
+            } else {
                 handleGoogleLoginError(result.error, true);
             }
         });
@@ -419,7 +422,8 @@ export function loadStreamlinedRegistrationForm(userData) {
             .then(response => {
                 if (response.status === 'success') {
                     showMessage('Registration successful. You are now logged in.', 'info');
-                    handleLoginResponse(response, true); // Auto-login for Google users
+                    setToken(response.token, true); // Always remember Google logins
+                    handleSuccessfulLogin(response.token);
                 } else {
                     showMessage('Registration failed: ' + response.message, 'error');
                 }

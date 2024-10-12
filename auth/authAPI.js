@@ -16,6 +16,9 @@ export function loginUser(email, password, rememberMe) {
             }
         }
         return response;
+    }).catch(error => {
+        // Throw a new error with the server's error message
+        throw new Error(error.responseJSON?.message || 'An unknown error occurred');
     });
 }
 
@@ -62,17 +65,6 @@ export function verifyEmail(token) {
         type: 'POST',
         contentType: 'application/json',
         data: JSON.stringify({ token })
-    });
-}
-
-export function loginWithToken(token) {
-    return $.ajax({
-        url: `${config.backend_url}/validate_token`,
-        type: 'POST',
-        headers: {
-            'Authorization': 'Bearer ' + token
-        },
-        contentType: 'application/json'
     });
 }
 

@@ -1,6 +1,8 @@
 import { loginWithGoogle } from './authAPI.js';
 import { loadBookingsScreen } from '../booking/bookingUI.js';
-import { showMessage, toggleMenu } from '../utils/uiUtils.js';
+import { loadProfileScreen } from '../profile/profileUI.js';
+import { loadPetsScreen } from '../pet/petUI.js';
+import { showMessage, toggleMenu, updateMenuState } from '../utils/uiUtils.js';
 
 export function checkLogoutParam() {
     const urlParams = new URLSearchParams(window.location.search);
@@ -24,22 +26,6 @@ export function getToken() {
     }
 }
 
-export function handleLoginResponse(response, rememberMe) {
-    if (response.status === 'success') {
-        const token = response.token;
-        if (rememberMe) {
-            localStorage.setItem('token', token);
-        } else {
-            sessionStorage.setItem('token', token);
-        }
-        toggleMenu(true);
-        loadBookingsScreen();
-    } else {
-        const msg = response.message || 'Login failed';
-        showMessage(msg, 'error');
-    }
-}
-
 export function setToken(token, rememberMe) {
     if (rememberMe) {
         localStorage.setItem('token', token);
@@ -60,8 +46,9 @@ export function handleGoogleLogin(token, isRegistration = false) {
                 if (isRegistration) {
                     showMessage('Registration with Google successful!', 'info');
                 }
-                handleLoginResponse(response, true); // Always remember Google logins
-                return { success: true };
+                setToken(response.token, true); // Always remember Google logins
+                handleSuccessfulLogin(response.token);
+                return { success: true, token: response.token };
             } else {
                 return { success: false, error: response };
             }
@@ -71,4 +58,30 @@ export function handleGoogleLogin(token, isRegistration = false) {
         });
 }
 
-// Remove the import of loadRegistrationForm from './authUI.js'
+export function getTokenAndCode() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const code = urlParams.get('code');
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+    
+    return { token, code };
+}
+
+export function handleSuccessfulLogin(token) {
+    const decodedToken = JSON.parse(atob(token.split('.')[1]));
+    const has_registration = decodedToken.has_registration;
+    const has_pets = decodedToken.has_pets;
+
+    // Store has_registration and hasPets in sessionStorage for use by other parts of the application
+    sessionStorage.setItem('hasRegistration', has_registration);
+    sessionStorage.setItem('hasPets', has_pets);
+
+    toggleMenu(true);
+    updateMenuState();
+    if (!has_registration) {
+        loadProfileScreen();
+    } else if (!has_pets) {
+        loadPetsScreen();
+    } else {
+        loadBookingsScreen();
+    }
+}

@@ -10,6 +10,13 @@
     <link rel="icon" href="./favicon.ico" type="image/x-icon">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
     <!-- <meta http-equiv="Content-Security-Policy" content="frame-ancestors 'self' https://accounts.google.com"> -->
+    <style>
+        .nav-link.disabled {
+            color: #6c757d;
+            pointer-events: none;
+            cursor: default;
+        }
+    </style>
 </head>
 <body>
     <nav class="navbar navbar-expand-lg navbar-light bg-light">
@@ -35,7 +42,9 @@
                     <li class="nav-item">
                         <a class="nav-link" href="#" id="menu-logout">Logout</a>
                     </li>
-                    <button id="refresh-data" class="btn btn-secondary">Refresh Data</button>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" id="refresh-data">Refresh Data</a>
+                    </li>
                 </ul>
             </div>
         </div>

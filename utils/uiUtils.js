@@ -1,6 +1,6 @@
-import { loadBookingsScreen } from '../booking/bookingUI.js';
-import { loadPetsScreen } from '../pet/petUI.js';
-import { loadProfileScreen } from '../profile/profileUI.js';
+import { loadBookingsScreen, refreshBookings } from '../booking/bookingUI.js';
+import { loadPetsScreen, refreshPets } from '../pet/petUI.js';
+import { loadProfileScreen, refreshProfile } from '../profile/profileUI.js';
 import { loadLoginForm } from '../auth/authUI.js';
 
 export function bindMenuActions() {
@@ -25,6 +25,19 @@ export function bindMenuActions() {
         sessionStorage.removeItem('token');
         loadLoginForm();
         toggleMenu(false);
+    });
+
+    $('#refresh-data').on('click', function(e) {
+        e.preventDefault();
+        Promise.all([
+            refreshBookings().catch(handleApiError),
+            refreshPets().catch(handleApiError),
+            refreshProfile().catch(handleApiError)
+        ]).then(() => {
+            showMessage('Data refreshed successfully!', 'info');
+        }).catch(() => {
+            // Error already handled by handleApiError
+        });
     });
 }
 
@@ -71,4 +84,32 @@ export function showMessage(message, type = 'info') {
     $('.btn-close').on('click', function() {
         $('body').css('padding-top', 0);
     });
+}
+
+export function updateMenuState() {
+    const hasRegistration = sessionStorage.getItem('hasRegistration') === 'true';
+    const hasPets = sessionStorage.getItem('hasPets') === 'true';
+
+    $('#menu-bookings').toggleClass('disabled', !hasRegistration || !hasPets)
+        .attr('tabindex', (!hasRegistration || !hasPets) ? '-1' : '0')
+        .attr('aria-disabled', (!hasRegistration || !hasPets).toString());
+    
+    $('#menu-pets').toggleClass('disabled', !hasRegistration)
+        .attr('tabindex', !hasRegistration ? '-1' : '0')
+        .attr('aria-disabled', (!hasRegistration).toString());
+}
+
+export function handleApiError(error) {
+    if (error.response) {
+        const data = error.response.data;
+        if (data.status === 'error' && (data.code === 'token_expired' || data.code === 'invalid_token' || data.code === 'authorization_required')) {
+            handleCredentialError(data.message);
+        } else {
+            console.error('API Error:', error);
+            showMessage('An error occurred. Please try again.', 'error');
+        }
+    } else {
+        console.error('Network Error:', error);
+        showMessage('Network error. Please check your connection and try again.', 'error');
+    }
 }
