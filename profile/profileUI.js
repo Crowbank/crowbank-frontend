@@ -2,7 +2,7 @@ import { fetchProfile, updateProfile } from './profileAPI.js';
 import { showMessage, updateMenuState } from '../utils/uiUtils.js';
 import { setToken } from '../auth/authUtils.js';
 
-export function loadProfileScreen() {
+export function showProfileScreen() {
     const cachedProfile = sessionStorage.getItem('profile');
     
     if (cachedProfile) {
@@ -188,10 +188,10 @@ function handleSubmit(event) {
 }
 
 function handleCancel() {
-    loadProfileScreen();
+    showProfileScreen();
 }
 
 export function refreshProfile() {
     sessionStorage.removeItem('profile');
-    loadProfileScreen();
+    showProfileScreen();
 }

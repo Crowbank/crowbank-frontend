@@ -1,67 +1,112 @@
-import { checkLogoutParam, getTokenAndCode, setToken, removeToken, handleSuccessfulLogin } from './auth/authUtils.js';
-import { loadLoginForm, handleEmailVerification, loadResetPasswordForm } from './auth/authUI.js';
-import { loginWithCode } from './auth/authAPI.js';
-import { bindMenuActions, showMessage, toggleMenu } from './utils/uiUtils.js';
+import { isAuthenticated, logout, routeBasedOnUserState, exchangeCodeForToken } from './auth/authUtils.js';
+import { showLoginForm, showRegistrationForm, showChangePasswordForm, showVerifyEmailForm, 
+    showResetPasswordForm, showForgotPasswordForm, handleEmailVerification } from './auth/authUI.js';
+import { showBookingsScreen, showBookingForm, openBookingForm } from './booking/bookingUI.js';
+import { showProfileScreen } from './profile/profileUI.js';
+import { showPetsScreen, showPetUI } from './pet/petUI.js';
+import { showMessage, updateMenuState } from './utils/uiUtils.js';
+// import page from './page.js';
 
-$(document).ready(function () {
-    checkLogoutParam();
-    const { token, code } = getTokenAndCode();
+// Add these lines at the beginning of the file
+console.log('main.js is running');
+console.log('URL search params:', window.location.search);
 
-    // Get the current path
-    const currentPath = window.location.pathname;
+function initializeRoutes() {
+    page.base('/frontend');
+
+    page('*', parseToken);
+    page('/', checkAuth, routeBasedOnUserState);
+    page('/booking', checkAuth, showBookingsScreen); // Ensure this calls showBookingsScreen
+    page('/booking/new', checkAuth, () => openBookingForm()); // New route for creating a new booking
+    page('/booking/:bookingId', checkAuth, showBookingForm);
+    page('/profile', checkAuth, showProfileScreen);
+    page('/pets', checkAuth, showPetsScreen);
+    page('/pet/:petNo', checkAuth, showPetUI);
+    page('/login', showLoginForm);
+    page('/register', showRegistrationForm);
+    page('/change-password', checkAuth, showChangePasswordForm);
+    page('/verify-email', handleEmailVerificationRoute);
+    page('/reset-password', showResetPasswordForm);
+    page('/forgot-password', showForgotPasswordForm);
+    page('*', notFound);
+
+    page();
+}
+
+function parseToken(ctx, next) {
     const urlParams = new URLSearchParams(window.location.search);
+    ctx.code = urlParams.get('code'); // Capture the code from URL
 
-    // Check for email verification
-    if (currentPath === '/frontend/verify-email') {
-        const verificationToken = urlParams.get('token');
-        if (verificationToken) {
-            handleEmailVerification(verificationToken);
-            return;
-        }
-    }
-
-    // Check for password reset
-    if (currentPath === '/frontend/reset-password') {
-        const resetToken = urlParams.get('token');
-        if (resetToken) {
-            loadResetPasswordForm(resetToken);
-            return;
-        }
-    }
-
-    // Check for forgot password
-    if (currentPath === '/frontend/forgot-password') {
-        loadForgotPasswordForm();
-        return;
-    }
-
-    if (token) {
-        handleSuccessfulLogin(token);
-    } else if (code) {
-        // If code is present, validate it and exchange for a token
-        loginWithCode(code)
-            .then(response => {
-                if (response.status === 'success') {
-                    setToken(response.token, false);  // Store in session storage
-                    handleSuccessfulLogin(response.token);
+    if (ctx.code) {
+        console.log('Code detected in URL:', ctx.code);
+        exchangeCodeForToken(ctx.code) // Exchange the code for a token
+            .then(result => {
+                if (result.success) {
+                    next(); // Proceed to the next middleware if successful
                 } else {
-                    handleCredentialError();
+                    console.error('Error exchanging code for token:', result.error);
+                    page.redirect('/login'); // Redirect to login on failure
                 }
-            })
-            .catch(() => {
-                handleCredentialError();
             });
     } else {
-        toggleMenu(false);
-        loadLoginForm();
+        next(); // Proceed if no code is present
     }
+}
 
-    bindMenuActions();
+function checkAuth(ctx, next) {
+    if (isAuthenticated()) {
+        next();
+    } else {
+        page.redirect('/login');
+    }
+}
+
+function notFound() {
+    $('#content-container').html('<h1>404 - Page Not Found</h1>');
+}
+
+function handleEmailVerificationRoute(ctx) {
+    const urlParams = new URLSearchParams(window.location.search);
+    const verifyToken = urlParams.get('verify');
+    if (verifyToken) {
+        handleEmailVerification(verifyToken);
+    } else {
+        showVerifyEmailForm();
+    }
+}
+
+$(function() {
+    initializeRoutes();
+    updateMenuState();
+
+    $('#menu-bookings').on('click', (e) => {
+        e.preventDefault();
+        page('/booking');
+    });
+
+    $('#menu-pets').on('click', (e) => {
+        e.preventDefault();
+        page('/pets');
+    });
+
+    $('#menu-profile').on('click', (e) => {
+        e.preventDefault();
+        page('/profile');
+    });
+
+    $('#menu-logout').on('click', (e) => {
+        e.preventDefault();
+        logout();
+    });
+
+    $('#refresh-data').on('click', (e) => {
+        e.preventDefault();
+        // Implement refresh data functionality
+        showMessage('Data refreshed successfully', 'info');
+    });
+
+    // Remove or comment out this log as it's no longer needed
+    // console.log('Verify token:', new URLSearchParams(window.location.search).get('verify'));
 });
 
-function handleCredentialError(message) {
-    removeToken();
-    toggleMenu(false);
-    loadLoginForm();
-    showMessage(message || 'Session expired. Please log in again.', 'warning');
-}
+export { initializeRoutes };

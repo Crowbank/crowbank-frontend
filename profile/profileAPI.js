@@ -1,5 +1,5 @@
 import { config } from '../config.js';
-import { getToken, setToken } from '../auth/authUtils.js';
+import { getToken } from '../auth/authUtils.js';
 
 export async function fetchProfile() {
     const token = getToken();
@@ -65,3 +65,9 @@ export function getCustomerStatus() {
         hasPets: payload.has_pets
     };
 }
+
+export async function refreshProfileData() {
+    sessionStorage.removeItem('profileData');
+    return fetchProfile();
+}
+

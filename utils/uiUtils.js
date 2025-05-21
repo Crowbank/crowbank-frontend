@@ -1,38 +1,38 @@
-import { loadBookingsScreen, refreshBookings } from '../booking/bookingUI.js';
-import { loadPetsScreen, refreshPets } from '../pet/petUI.js';
-import { loadProfileScreen, refreshProfile } from '../profile/profileUI.js';
-import { loadLoginForm } from '../auth/authUI.js';
+import {  refreshBookingData } from '../booking/bookingAPI.js';
+import {  refreshPetData } from '../pet/petAPI.js';
+import {  refreshProfileData } from '../profile/profileAPI.js';
+// import page from 'page';
 
 export function bindMenuActions() {
     $('#menu-bookings').on('click', function (e) {
         e.preventDefault();
-        loadBookingsScreen();
+        page('/booking');
     });
 
     $('#menu-pets').on('click', function (e) {
         e.preventDefault();
-        loadPetsScreen();
+        page('/pets');
     });
 
     $('#menu-profile').on('click', function (e) {
         e.preventDefault();
-        loadProfileScreen();
+        page('/profile');
     });
 
     $('#menu-logout').on('click', function (e) {
         e.preventDefault();
         localStorage.removeItem('token');
         sessionStorage.removeItem('token');
-        loadLoginForm();
+        page('/login');
         toggleMenu(false);
     });
 
     $('#refresh-data').on('click', function(e) {
         e.preventDefault();
         Promise.all([
-            refreshBookings().catch(handleApiError),
-            refreshPets().catch(handleApiError),
-            refreshProfile().catch(handleApiError)
+            refreshBookingData().catch(handleApiError),
+            refreshPetData().catch(handleApiError),
+            refreshProfileData().catch(handleApiError)
         ]).then(() => {
             showMessage('Data refreshed successfully!', 'info');
         }).catch(() => {

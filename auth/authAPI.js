@@ -23,7 +23,12 @@ export function loginUser(email, password, rememberMe) {
 }
 
 export function loginWithCode(code) {
-    return $.post(config.backend_url + '/login_with_code', { code: code });
+    return $.ajax({
+        url: config.backend_url + '/login_with_code',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({ code: code })
+    });
 }
 
 export function registerUser(email, password, firstName, lastName, existingCustomer, googleId = null) {

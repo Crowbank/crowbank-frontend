@@ -1,8 +1,6 @@
-import { loginWithGoogle } from './authAPI.js';
-import { loadBookingsScreen } from '../booking/bookingUI.js';
-import { loadProfileScreen } from '../profile/profileUI.js';
-import { loadPetsScreen } from '../pet/petUI.js';
+import { loginWithGoogle, loginWithCode } from './authAPI.js';
 import { showMessage, toggleMenu, updateMenuState } from '../utils/uiUtils.js';
+// import page from 'page';
 
 export function checkLogoutParam() {
     const urlParams = new URLSearchParams(window.location.search);
@@ -18,10 +16,11 @@ export function getToken() {
     const urlParams = new URLSearchParams(window.location.search);
     let token = urlParams.get('token');
     if (token) {
-        // If token is provided in URL, use it but don't store it
+        // If token is provided in URL, use it and store it
+        setToken(token, true);
         return token;
     } else {
-        // Otherwise, get from storage as before
+        // Otherwise, get from storage
         return localStorage.getItem('token') || sessionStorage.getItem('token');
     }
 }
@@ -60,10 +59,10 @@ export function handleGoogleLogin(token, isRegistration = false) {
 
 export function getTokenAndCode() {
     const urlParams = new URLSearchParams(window.location.search);
-    const code = urlParams.get('code');
+    const code = urlParams.get('code'); // Ensure we get the code from URL
     const token = localStorage.getItem('token') || sessionStorage.getItem('token');
     
-    return { token, code };
+    return { token, code }; // Return both token and code
 }
 
 export function handleSuccessfulLogin(token) {
@@ -71,17 +70,70 @@ export function handleSuccessfulLogin(token) {
     const has_registration = decodedToken.has_registration;
     const has_pets = decodedToken.has_pets;
 
-    // Store has_registration and hasPets in sessionStorage for use by other parts of the application
     sessionStorage.setItem('hasRegistration', has_registration);
     sessionStorage.setItem('hasPets', has_pets);
 
     toggleMenu(true);
     updateMenuState();
-    if (!has_registration) {
-        loadProfileScreen();
-    } else if (!has_pets) {
-        loadPetsScreen();
+
+    routeBasedOnUserState();
+}
+
+export function routeBasedOnUserState() {
+    const hasRegistration = sessionStorage.getItem('hasRegistration') === 'true';
+    const hasPets = sessionStorage.getItem('hasPets') === 'true';
+
+    if (!hasRegistration) {
+        page('/profile');
+    } else if (!hasPets) {
+        page('/pets');
     } else {
-        loadBookingsScreen();
+        page('/booking');
     }
+}
+
+export function logout() {
+    removeToken();
+    sessionStorage.removeItem('hasRegistration');
+    sessionStorage.removeItem('hasPets');
+    toggleMenu(false);
+    updateMenuState();
+    page('/login');
+}
+
+export function isAuthenticated() {
+    const token = getToken();
+    if (!token) {
+        return false;
+    }
+    
+    try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        const expiry = payload.exp * 1000; // Convert to milliseconds
+        if (Date.now() >= expiry) {
+            removeToken(); // Token is expired, so remove it
+            return false;
+        }
+        return true;
+    } catch (error) {
+        console.error('Error parsing token:', error);
+        removeToken(); // Invalid token, so remove it
+        return false;
+    }
+}
+
+export function exchangeCodeForToken(code) {
+    return loginWithCode(code) // Call the API to exchange the code for a token
+        .then(response => {
+            if (response.status === 'success') {
+                setToken(response.token, true); // Store the token
+                handleSuccessfulLogin(response.token); // Handle successful login
+                return { success: true, token: response.token };
+            } else {
+                return { success: false, error: response };
+            }
+        })
+        .catch(error => {
+            return { success: false, error: error.responseJSON || error };
+        });
 }

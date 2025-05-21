@@ -2,7 +2,7 @@ import { loginUser, registerUser, requestPasswordReset, verifyEmail, resetPasswo
 import { showMessage } from '../utils/uiUtils.js';
 import { handleGoogleLogin, handleSuccessfulLogin, setToken } from './authUtils.js';
 
-export function loadLoginForm() {
+export function showLoginForm() {
     // Create a simple login form
     const loginFormHtml = `
         <div class="row justify-content-center">
@@ -78,16 +78,16 @@ export function loadLoginForm() {
 
     $('#register-link').on('click', function(e) {
         e.preventDefault();
-        loadRegistrationForm();
+        showRegistrationForm();
     });
 
     $('#forgot-password-link').on('click', function(e) {
         e.preventDefault();
-        loadForgotPasswordForm();
+        showForgotPasswordForm();
     });
 }
 
-export function loadRegistrationForm() {
+export function showRegistrationForm() {
     const registrationChoiceHtml = `
         <div class="row justify-content-center">
             <div class="col-md-8 text-center">
@@ -115,7 +115,7 @@ export function loadRegistrationForm() {
     $('#google-register-btn').on('click', loadGoogleRegistrationForm);
     $('#login-link').on('click', function(e) {
         e.preventDefault();
-        loadLoginForm();
+        showLoginForm();
     });
 }
 
@@ -168,7 +168,7 @@ function loadEmailRegistrationForm() {
     $('#email-registration-form').on('submit', handleEmailRegistration);
     $('#back-to-choice').on('click', function(e) {
         e.preventDefault();
-        loadRegistrationForm();
+        showRegistrationForm();
     });
 }
 
@@ -213,7 +213,7 @@ function loadGoogleRegistrationForm() {
 
     $('#back-to-choice').on('click', function(e) {
         e.preventDefault();
-        loadRegistrationForm();
+        showRegistrationForm();
     });
 }
 
@@ -235,7 +235,7 @@ function handleEmailRegistration(e) {
         .then(response => {
             if (response.status === 'success') {
                 showMessage('Registration successful. Please check your email to verify your account.', 'info');
-                loadLoginForm();
+                showLoginForm();
             } else {
                 showMessage('Registration failed: ' + response.message, 'error');
             }
@@ -257,7 +257,7 @@ function handleGoogleSignIn(response) {
         });
 }
 
-export function loadForgotPasswordForm() {
+export function showForgotPasswordForm() {
     const forgotPasswordFormHtml = `
         <div class="row justify-content-center">
             <div class="col-md-6">
@@ -284,7 +284,7 @@ export function loadForgotPasswordForm() {
             .then(response => {
                 if (response.status === 'success') {
                     showMessage('Password reset instructions have been sent to your email.', 'info');
-                    loadLoginForm();
+                    showLoginForm();
                 } else {
                     showMessage('Password reset request failed: ' + response.message, 'error');
                 }
@@ -296,7 +296,7 @@ export function loadForgotPasswordForm() {
 
     $('#login-link').on('click', function(e) {
         e.preventDefault();
-        loadLoginForm();
+        showLoginForm();
     });
 }
 
@@ -308,16 +308,16 @@ export function handleEmailVerification(token) {
             } else {
                 showMessage('Email verification failed: ' + response.message, 'error');
             }
-            loadLoginForm();
+            showLoginForm();
         })
         .catch(error => {
             showMessage('Email verification failed: ' + error.message, 'error');
-            loadLoginForm();
+            showLoginForm();
         });
 }
 
 // Add this new function
-export function loadResetPasswordForm(token) {
+export function showResetPasswordForm(token) {
     const resetPasswordFormHtml = `
         <div class="row justify-content-center">
             <div class="col-md-6">
@@ -355,7 +355,7 @@ export function loadResetPasswordForm(token) {
             .then(response => {
                 if (response.status === 'success') {
                     showMessage('Password reset successful. You can now log in with your new password.', 'info');
-                    loadLoginForm();
+                    showLoginForm();
                 } else {
                     showMessage('Password reset failed: ' + response.message, 'error');
                 }
@@ -450,4 +450,75 @@ function handleGoogleLoginError(error, isRegistration) {
             'error'
         );
     }
+}
+
+// Add this function to the existing authUI.js file
+
+export function showChangePasswordForm() {
+    const changePasswordFormHtml = `
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <h2>Change Password</h2>
+                <form id="change-password-form">
+                    <div class="mb-3">
+                        <label for="current-password" class="form-label">Current Password</label>
+                        <input type="password" class="form-control" id="current-password" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="new-password" class="form-label">New Password</label>
+                        <input type="password" class="form-control" id="new-password" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="confirm-new-password" class="form-label">Confirm New Password</label>
+                        <input type="password" class="form-control" id="confirm-new-password" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Change Password</button>
+                </form>
+            </div>
+        </div>
+    `;
+
+    $('#content-container').html(changePasswordFormHtml);
+
+    $('#change-password-form').on('submit', function(e) {
+        e.preventDefault();
+        const currentPassword = $('#current-password').val();
+        const newPassword = $('#new-password').val();
+        const confirmNewPassword = $('#confirm-new-password').val();
+
+        if (newPassword !== confirmNewPassword) {
+            showMessage('New passwords do not match', 'error');
+            return;
+        }
+
+        // You'll need to implement this function in your authAPI.js
+        changePassword(currentPassword, newPassword)
+            .then(response => {
+                if (response.status === 'success') {
+                    showMessage('Password changed successfully', 'success');
+                    // Redirect to profile or dashboard
+                    page('/profile');
+                } else {
+                    showMessage('Failed to change password: ' + response.message, 'error');
+                }
+            })
+            .catch(error => {
+                showMessage('Failed to change password: ' + error.message, 'error');
+            });
+    });
+}
+
+export function showVerifyEmailForm() {
+    // This should display a message asking the user to check their email
+    // and click the verification link. The actual verification is handled
+    // by handleEmailVerification when the user clicks the link.
+    const verifyEmailHtml = `
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <h2>Verify Your Email</h2>
+                <p>Please check your email for a verification link. Click the link to verify your email address.</p>
+            </div>
+        </div>
+    `;
+    $('#content-container').html(verifyEmailHtml);
 }

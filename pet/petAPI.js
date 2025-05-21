@@ -31,11 +31,6 @@ export async function getPetData() {
     }
 }
 
-export function getPets() {
-    const cachedData = JSON.parse(sessionStorage.getItem('petData') || '{}');
-    return cachedData.pets || [];
-}
-
 export function getBreeds() {
     const cachedData = JSON.parse(sessionStorage.getItem('petData') || '{}');
     return cachedData.breeds || [];
